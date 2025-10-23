@@ -1,0 +1,32 @@
+# Dependencies
+be/node_modules/
+fe/node_modules/
+**/node_modules/
+
+# Build outputs
+be/dist/
+be/build/
+fe/dist/
+fe/build/
+
+# Environment (jangan commit rahasia)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Upload runtime (tetap commit placeholder)
+be/uploads/*
+!be/uploads/.gitkeep
+
+# Logs & cache
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.cache/
+.tmp/
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
