@@ -85,6 +85,42 @@ router.get("/:idOrSlug", maybeAuth, async (req, res) => {
   res.json(idea);
 });
 
+/**
+ * GET /ideas/user/:id
+ * Mengembalikan daftar ide milik user (public)
+ */
+router.get("/user/:userId", async (req, res, next) => {
+  try {
+    const userId = Number(req.params.userId);
+    // try to include optional image/thumbnail columns if present
+    try {
+      const rows = await query(
+        `SELECT i.id,i.title,i.slug,i.created_at,i.image,i.thumbnail,
+                (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes
+         FROM ideas i
+         WHERE i.user_id=?
+         ORDER BY i.created_at DESC`,
+        [userId]
+      );
+      return res.json(rows);
+    } catch (err) {
+      if (err?.code === "ER_BAD_FIELD_ERROR") {
+        // fallback when image/thumbnail columns missing
+        const rows = await query(
+          `SELECT i.id,i.title,i.slug,i.created_at,
+                  (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes
+           FROM ideas i
+           WHERE i.user_id=?
+           ORDER BY i.created_at DESC`,
+          [userId]
+        );
+        return res.json(rows);
+      }
+      throw err;
+    }
+  } catch (e) { next(e); }
+});
+
 /** Update & Delete (owner / admin/moderator) */
 const editSchema = z.object({
   title: z.string().min(3).optional(),
