@@ -25,9 +25,10 @@ router.get("/", maybeAuth, async (req, res, next) => {
 
     const rows = await query(
       `SELECT i.id,i.title,i.slug,i.created_at,
-              u.display_name AS author,c.name AS category,
-              (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes,
-              (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id AND l.created_at >= (UTC_TIMESTAMP() - INTERVAL 7 DAY)) AS likes_7d
+        u.display_name AS author,c.name AS category,
+        (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes,
+        (SELECT COUNT(*) FROM comments cm WHERE cm.idea_id=i.id AND cm.status='visible') AS total_comments,
+        (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id AND l.created_at >= (UTC_TIMESTAMP() - INTERVAL 7 DAY)) AS likes_7d
        FROM ideas i
        JOIN users u ON u.id=i.user_id
        LEFT JOIN categories c ON c.id=i.category_id
@@ -64,7 +65,8 @@ router.get("/:idOrSlug", maybeAuth, async (req, res) => {
   const key = req.params.idOrSlug;
   const baseSelect =
     `SELECT i.*, u.display_name AS author,
-            (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes
+            (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes,
+            (SELECT COUNT(*) FROM comments c WHERE c.idea_id=i.id AND c.status='visible') AS total_comments
      FROM ideas i JOIN users u ON u.id=i.user_id`;
   const rows = /^\d+$/.test(key)
     ? await query(`${baseSelect} WHERE i.id=?`, [Number(key)])
@@ -95,8 +97,9 @@ router.get("/user/:userId", async (req, res, next) => {
     // try to include optional image/thumbnail columns if present
     try {
       const rows = await query(
-        `SELECT i.id,i.title,i.slug,i.created_at,i.image,i.thumbnail,
-                (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes
+  `SELECT i.id,i.title,i.slug,i.created_at,i.image,i.thumbnail,
+    (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes,
+    (SELECT COUNT(*) FROM comments cm WHERE cm.idea_id=i.id AND cm.status='visible') AS total_comments
          FROM ideas i
          WHERE i.user_id=?
          ORDER BY i.created_at DESC`,
@@ -107,8 +110,9 @@ router.get("/user/:userId", async (req, res, next) => {
       if (err?.code === "ER_BAD_FIELD_ERROR") {
         // fallback when image/thumbnail columns missing
         const rows = await query(
-          `SELECT i.id,i.title,i.slug,i.created_at,
-                  (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes
+    `SELECT i.id,i.title,i.slug,i.created_at,
+      (SELECT COUNT(*) FROM idea_likes l WHERE l.idea_id=i.id) AS total_likes,
+      (SELECT COUNT(*) FROM comments cm WHERE cm.idea_id=i.id AND cm.status='visible') AS total_comments
            FROM ideas i
            WHERE i.user_id=?
            ORDER BY i.created_at DESC`,
